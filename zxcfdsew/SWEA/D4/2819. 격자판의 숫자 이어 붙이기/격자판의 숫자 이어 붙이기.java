@@ -15,36 +15,37 @@ public class Solution {
 
         int T = Integer.parseInt(br.readLine());
         final int SIZE = 4;
+        StringBuilder sb = new StringBuilder();
 
         for (int tc = 1; tc < T + 1; tc++) {
-            String[][] board = new String[SIZE][SIZE];
-            HashSet<String> result = new HashSet<>();  // 결과 담을 배열
+            int[][] board = new int[SIZE][SIZE];
+            HashSet<Integer> result = new HashSet<>();  // 결과 담을 집합
 
             // 배열 입력받아서 board에 저장
             for (int i = 0; i < SIZE; i++) {
                 StringTokenizer st = new StringTokenizer(br.readLine());
                 for (int j = 0; j < SIZE; j++) {
-                    board[i][j] = st.nextToken();
+                    board[i][j] = Integer.parseInt(st.nextToken());
                 }
             }
 
             // 모든 위치에서 검사
             for (int i = 0; i < SIZE; i++) {
                 for (int j = 0; j < SIZE; j++) {
-                    dfs(i, j, "" + board[i][j], result, board);
+                    dfs(i, j, board[i][j], 1, result, board);
                 }
             }
 
-            // 결과 출력
-            StringBuilder sb = new StringBuilder();
-            sb.append("#").append(tc).append(" ").append(result.size());
-            System.out.println(sb);
+            // 결과 누적
+            sb.append("#").append(tc).append(" ").append(result.size()).append('\n');
         }
+
+        System.out.print(sb);
     }
 
-    static void dfs(int r, int c, String path, HashSet<String> result, String[][] board) {
-        // 길이가 7이면 종료
-        if (path.length() == 7) {
+    static void dfs(int r, int c, int path, int depth, HashSet<Integer> result, int[][] board) {
+        // 7칸을 갔으면 종료
+        if (depth == 7) {
             result.add(path);
             return;
         }
@@ -57,7 +58,7 @@ public class Solution {
             // 경계선 확인
             if (nr < 0 || nr >= 4 || nc < 0 || nc >= 4) continue;
 
-            dfs(nr, nc, path + board[nr][nc], result, board);
+            dfs(nr, nc, path * 10 + board[nr][nc], depth + 1, result, board);
         }
     }
 }
