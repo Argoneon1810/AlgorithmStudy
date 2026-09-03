@@ -1,25 +1,14 @@
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.ArrayDeque;
-import java.util.HashSet;
+import java.util.Comparator;
+import java.util.PriorityQueue;
 
-class MyHashQueue<T> extends ArrayDeque<T> {
+class MyHeap<T> extends PriorityQueue<T> {
 	private static final long serialVersionUID = 7301991324580155611L;
-	private final HashSet<T> members = new HashSet<>();
-	
-	boolean has(Object data) { return members.contains(data); }
-	
-	void idfcPush(T data) {
-		this.offer(data);
-		members.add(data);
-	}
-
-	T idfcPop() {
-		T data = this.poll();
-		members.remove(data);
-		return data;
-	}
+	MyHeap(Comparator<? super T> cmp) { super(cmp); }
+	void idfcPush(T data) { this.offer(data); }
+	T idfcPop() { return this.poll(); }
 }
 
 class Solution {
@@ -45,28 +34,39 @@ class Solution {
 	static boolean isBlocked(int curr) {
 		return (curr != 0) && ((curr != START) && (curr != END));
 	}
+	
+	static int cost(int board[], int c) {
+		// 이 문제는 바닥에 가중치가 없어 항상 1이다.
+		// 그래도 다익스트라로 구현했으니 꼴을 맞추고자 넣었다.
+		return 1;
+	}
 
 	void fill(int board[], int start) {
-		// 벨만 포드 : 어떤 칸이 업데이트 되어야 하는지 모름.
-		//          그냥 전부 재방문해서 업데이트를 할 칸만 하게 함
-		// SPFA : 주목을 받아야 할 칸 후보를 이전 스텝에서 미리 알 수 있으므로
-		//        방문이 필요없는 칸은 애초에 방문을 안하고 해결
-		//        조기탈출 조건도 필요 없음 
-		MyHashQueue<Integer> md = new MyHashQueue<>();
-		md.idfcPush(start);
+		// 다익스트라 : PQ를 쓰면 어떤 칸을 처음 방문할 때 바닥에 기록한 거리가
+		//           곧 그 칸의 가장 이상적인 거리이다.
+		//           음수 가중치에 대한 지원을 포기하는 대신 재방문 없는 처리를 구현. 
+		//           (대신 힙이 최소값을 찾아 주는 비용을 감수해야 한다.)
+		MyHeap<int[]> md = new MyHeap<>(
+				(a, b) -> Integer.compare(a[1], b[1])
+		);
+		md.idfcPush(new int[] { start, 0 });	// { 칸, 그 칸까지의 거리 }
+												// Tuple 구현할까 했는데
+												// 이게 더 저렴한거 같음
 		while (!md.isEmpty()) {
-			int c = md.idfcPop();
+			int c[] = md.idfcPop();
+			int c_idx = c[0];
+			if (c[1] > board[NSQ+c_idx]) 	// 새로 기록 시도하는 거리가
+				continue;					// 보드에 기록된 거리보다 멀면 버림
 			for (int d = 0; d < 4; ++d) {	// 4방탐색
-				int n = c + ditx[d];
+				int n = c_idx + ditx[d];
 				if (isOffboard(n))			// 경계조건
 					continue;
 				if (isBlocked(board, n))	// 4방이 방문 가능한 칸인지
 					continue;
-				if (board[NSQ+c] + 1 < board[NSQ+n]) {	// 더 나은
-					board[NSQ+n] = board[NSQ+c] + 1;	// 거리 찾기
-					if (!md.has(n))			// '재방문 필요'를 마킹하는
-						md.idfcPush(n);		// .. 것이므로 같은게 두번 이상
-											// .. 들어갈 이유가 없다.
+				if (board[NSQ+c_idx]+cost(board, n) < board[NSQ+n]) {
+					// 더 나은 거리 찾기
+					board[NSQ+n] = board[NSQ+c_idx] + cost(board, n);
+					md.idfcPush(new int[] { n, board[NSQ+n] });
 				}
 			}
 		}
