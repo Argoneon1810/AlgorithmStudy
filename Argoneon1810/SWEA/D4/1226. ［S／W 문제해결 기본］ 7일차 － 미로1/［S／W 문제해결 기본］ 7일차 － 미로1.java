@@ -3,12 +3,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayDeque;
 
-class MyQueue<T> extends ArrayDeque<T> {
-	private static final long serialVersionUID = -2514028169229909462L;
-	void idfcPush(T data) { this.offer(data); }
-	T idfcPop() { return this.poll(); }
-}
-
 class MyStack<T> extends ArrayDeque<T> {
 	private static final long serialVersionUID = 8960379107114503167L;
 	void idfcPush(T data) { this.addFirst(data); }
@@ -29,22 +23,8 @@ class Solution {
 		return cx < 0 || cx >= N || cy < 0 || cy >= N;
 	}
 
-	static void debugPrintBoard(int board[]) {
-		StringBuilder sb = new StringBuilder();
-		for (int j = 0; j < N; ++j) {
-			for (int i = 0; i < N; ++i) {
-				if (i != 0)
-					sb.append(' ');
-				sb.append(String.format("%02d", board[j * N + i]));
-			}
-			if (j < N - 1) sb.append('\n');
-		}
-		System.out.println(sb);
-	}
-
-	void fill(int board[], int start) {
+	void find(int board[], int start) {
 		MyStack<Integer> md = new MyStack<>();
-//		MyQueue<Integer> md = new MyQueue<>();
 		md.idfcPush(start);
 		while (!md.isEmpty()) {
 			int c = md.idfcPop();
@@ -54,6 +34,8 @@ class Solution {
 			if ((curr != 0) && ((curr != START) && (curr != END)))
 				continue;
 			board[c] = -1;
+			if (curr == END)
+				break; //dfs early stopping (pathfinding)
 			for (int d = 0; d < 4; ++d)
 				md.idfcPush(c + ditx[d]);
 		}
@@ -78,7 +60,7 @@ class Solution {
 				}
 			}
 		}
-		fill(board, start);
+		find(board, start);
 		return board[end] == -1 ? "1" : "0";
 	}
 
@@ -86,7 +68,6 @@ class Solution {
 		BufferedReader br = new BufferedReader(
 				new InputStreamReader(System.in));
 		int T;
-		// T = Integer.parseInt(br.readLine().trim());
 		T = 10;
 		StringBuilder sb = new StringBuilder();
 		for (int test_case = 1; test_case <= T; test_case++)
