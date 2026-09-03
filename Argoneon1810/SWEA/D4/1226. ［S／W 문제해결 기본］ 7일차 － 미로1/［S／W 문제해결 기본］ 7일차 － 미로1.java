@@ -43,8 +43,8 @@ class Solution {
 	}
 
 	void fill(int board[], int start) {
-//		MyStack<Integer> md = new MyStack<>(); // dfs
-		MyQueue<Integer> md = new MyQueue<>(); // bfs
+		MyStack<Integer> md = new MyStack<>();
+//		MyQueue<Integer> md = new MyQueue<>();
 		md.idfcPush(start);
 		while (!md.isEmpty()) {
 			int c = md.idfcPop();
