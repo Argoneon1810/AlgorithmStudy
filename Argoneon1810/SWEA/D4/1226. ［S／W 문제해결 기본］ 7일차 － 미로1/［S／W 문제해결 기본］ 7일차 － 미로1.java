@@ -1,6 +1,26 @@
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.ArrayDeque;
+import java.util.HashSet;
+
+class MyHashQueue<T> extends ArrayDeque<T> {
+	private static final long serialVersionUID = 7301991324580155611L;
+	private final HashSet<T> members = new HashSet<>();
+	
+	boolean has(Object data) { return members.contains(data); }
+	
+	void idfcPush(T data) {
+		this.offer(data);
+		members.add(data);
+	}
+
+	T idfcPop() {
+		T data = this.poll();
+		members.remove(data);
+		return data;
+	}
+}
 
 class Solution {
 	static final int N = 16;
@@ -19,38 +39,37 @@ class Solution {
 	}
 
 	static boolean isBlocked(int board[], int c) {
-		int curr = board[c];
+		return isBlocked(board[c]);
+	}
+
+	static boolean isBlocked(int curr) {
 		return (curr != 0) && ((curr != START) && (curr != END));
 	}
 
-	void fill(int board[]) {
-		// 정점 수-1 만큼 순회
-		// 벨만 포드 알고리즘의 정의에 의해, 이보다 많은 루프가 필요하지 않다는 Least UB
-		// 이번 경우는 모든 칸의 가중치가 같아 조기종료가 일어날 것이므로
-		// 무한루프로 만들어도 된다.
-		 for (int __ = 0; __ < NSQ - 1; ++__) {
-			boolean updated = false;
-			for (int c = 0; c < NSQ; ++c) {	// 모든 칸 방문
-				if (board[NSQ+c] == INF)	// 거리를 전파할 수 있는 칸만 방문
+	void fill(int board[], int start) {
+		// 벨만 포드 : 어떤 칸이 업데이트 되어야 하는지 모름.
+		//          그냥 전부 재방문해서 업데이트를 할 칸만 하게 함
+		// SPFA : 주목을 받아야 할 칸 후보를 이전 스텝에서 미리 알 수 있으므로
+		//        방문이 필요없는 칸은 애초에 방문을 안하고 해결
+		//        조기탈출 조건도 필요 없음 
+		MyHashQueue<Integer> md = new MyHashQueue<>();
+		md.idfcPush(start);
+		while (!md.isEmpty()) {
+			int c = md.idfcPop();
+			for (int d = 0; d < 4; ++d) {	// 4방탐색
+				int n = c + ditx[d];
+				if (isOffboard(n))			// 경계조건
 					continue;
-				for (int d = 0; d < 4; ++d) {	// 4방탐색
-					int n = c + ditx[d];
-					if (isOffboard(n))			// 경계조건
-						continue;
-					if (isBlocked(board, n))	// 4방이 방문 가능한 칸인지
-						continue;
-					if (board[NSQ+c] + 1 < board[NSQ+n]) {	// 더 나은
-						board[NSQ+n] = board[NSQ+c] + 1;	// 거리 찾기
-						updated = true;
-					}
+				if (isBlocked(board, n))	// 4방이 방문 가능한 칸인지
+					continue;
+				if (board[NSQ+c] + 1 < board[NSQ+n]) {	// 더 나은
+					board[NSQ+n] = board[NSQ+c] + 1;	// 거리 찾기
+					if (!md.has(n))			// '재방문 필요'를 마킹하는
+						md.idfcPush(n);		// .. 것이므로 같은게 두번 이상
+											// .. 들어갈 이유가 없다.
 				}
 			}
-			if (!updated)
-				break;
 		}
-		for (int c = 0; c < N * N; ++c)
-			if (board[NSQ+c] != INF)
-				board[c] = -1;
 	}
 
 	String solveInner(BufferedReader br) throws IOException {
@@ -74,8 +93,8 @@ class Solution {
 			}
 		}
 		board[NSQ+start] = 0;
-		fill(board);
-		return board[end] == -1 ? "1" : "0";
+		fill(board, start);
+		return board[NSQ+end] != INF ? "1" : "0";
 	}
 
 	void solve() throws IOException {
