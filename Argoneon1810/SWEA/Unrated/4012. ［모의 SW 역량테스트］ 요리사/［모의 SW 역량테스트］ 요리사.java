@@ -79,22 +79,13 @@ class Solution {
 			}
 		}
 		int mask = getInitialBitmask(N);
-		int[] valMemo = new int[top];
-		boolean[] isMemoized = new boolean[top];
 		int best = Integer.MAX_VALUE;
+		int half = top >> 1;
 		do {
-			int value = 0;
-			if (isMemoized[mask])
-				value = valMemo[mask];
-			else {
-				fillGroups(N, mask);
-				int maskComplement = getComplement(mask);
-				value = valMemo[mask] = valMemo[maskComplement]
-						= evaluate(getScore(S, N, 0, 0, 0), getScore(S, N, 1, 0, 0));
-				isMemoized[mask] = isMemoized[maskComplement] = true;
-			}
+			fillGroups(N, mask);
+			int value = evaluate(getScore(S, N, 0, 0, 0), getScore(S, N, 1, 0, 0));
 			best = Integer.min(best, value);
-		} while((mask = nextBitMask(N, mask)) < top);
+		} while((mask = nextBitMask(N, mask)) < half);
 		groupIsStale = true;
 		return Integer.toString(best);
 	}
