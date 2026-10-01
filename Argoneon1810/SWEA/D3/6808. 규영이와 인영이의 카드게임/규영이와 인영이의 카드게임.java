@@ -2,123 +2,102 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.StringTokenizer;
-import java.util.Arrays;
- 
-class Solution {
-    static final long FULL = (1L << 18) - 1;
-    void swap(int arr[], int a, int b) {
-        int temp = arr[a];
-        arr[a] = arr[b];
-        arr[b] = temp;
-    }
-    void reverse(int arr[], int fromInclusive, int toExclusive) {
-        int N = toExclusive-fromInclusive;
-        for (int i=0; i<N/2; ++i)
-            swap(arr, fromInclusive + i, fromInclusive + N-1-i);
-    }
-    boolean next(int arr[]) {
-        // 오른쪽에 가장 가까운, 순방향 오름차순인 구간의 왼쪽 인덱스 찾기
-        int N = arr.length;
-        int idx = Integer.MAX_VALUE;
-        for (int i=N-1; i>0; --i) {
-            if (arr[i] > arr[i-1]) {
-                idx = i;
-                break;
-            }
-        }
-        // 못찾았으면 순열 끝
-        if (idx == Integer.MAX_VALUE)
-            return false;
-        // 오른쪽에 가장 가까운, idx-1보다 큰 값의 인덱스 찾기
-        int idx2 = Integer.MAX_VALUE;
-        for (int i=N-1; i>=idx; --i) {
-            if (arr[i] > arr[idx-1]) {
-                idx2 = i;
-                break;
-            }
-        }
-        // 두 값 스왑
-        swap(arr, idx2, idx-1);
-        // idx 뒤쪽의 내림차순인 구간 역순으로
-        reverse(arr, idx, N);
-        return true;
-    }
-    int winCheck(int s[], int o[]) {
-        int ss, so; ss=so=0;
-        for(int i=0; i<9; ++i) {
-            int res = Integer.compare(s[i], o[i]);
-            if(res<0)
-                so += s[i] + o[i];
-            else
-                ss += s[i] + o[i];
-        }
-        return Integer.compare(ss, so);
-    }
-    String solveInner(BufferedReader br) throws IOException {
-        StringTokenizer st = new StringTokenizer(br.readLine());
-        long mine = 0;
-        int mineArr[] = new int[9];
-        for(int i=0; i<9; ++i) {
-            mineArr[i] = Integer.parseInt(st.nextToken());
-            mine += (1L << (mineArr[i]-1));
-        }
-        long notMine = ~mine & FULL;
-        int notMineArr[] = new int[9];
-        int cnt = 0;
-        for(int i=0; i<18; ++i) {
-            if ((notMine & (1L << i))!=0)
-                notMineArr[cnt++] = i+1;
-        }
-        Arrays.sort(notMineArr);
-        int win, lose; win=lose=0;
-        do {
-            switch(winCheck(mineArr, notMineArr)) {
-            case -1:
-                ++lose;
-                break;
-            case 1:
-                ++win;
-                break;
-            default:
-                break;
-            }
-        } while(next(notMineArr));
-        StringBuilder sb = new StringBuilder();
-        return sb.append(win).append(' ').append(lose).toString();
-    }
- 
-    void solve() throws IOException {
-        BufferedReader br = new BufferedReader(
-                new InputStreamReader(System.in));
-        int T;
-        T = Integer.parseInt(br.readLine().trim());
-        StringBuilder sb = new StringBuilder();
-        for (int test_case = 1; test_case <= T; test_case++)
-            sb.append('#').append(test_case)
-                    .append(' ').append(solveInner(br))
-                    .append('\n');
-        System.out.print(sb);
-    }
-     
-    void permTest() {
-        int arr[] = new int[] {1, 2, 3, 4};
-        do {
-            System.out.println(print(arr));
-        } while(next(arr));
-    }
-    String print(int arr[]) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("[ ");
-        for (int i=0; i<arr.length; ++i) {
-            if (i!=0)
-                sb.append(", ");
-            sb.append(arr[i]);
-        }
-        return sb.append(" ]").toString();
-    }
- 
-    public static void main(String args[]) throws Exception {
-        new Solution().solve();
-//      new Solution().permTest();
-    }
+
+public class Solution {
+	static final int ALL_CARDS = 18;
+	static final int PER_PLAYER_CARDS = 9;
+	static final int P1_ID = 0;
+	static final int P2_ID = 1;
+	public static void main(String...args) throws IOException {
+		BufferedReader br = new BufferedReader(
+			new InputStreamReader(System.in)
+		);
+		StringTokenizer st = new StringTokenizer(br.readLine());
+		int T = Integer.parseInt(st.nextToken());
+		StringBuilder sb = new StringBuilder();
+		for(int tc=1; tc<=T; ++tc) {
+			sb
+				.append('#')
+				.append(tc)
+				.append(' ')
+				.append(solve(br))
+				.append('\n');
+		}
+		System.out.print(sb.toString());
+	}
+
+	static String solve(BufferedReader br) throws IOException {
+		StringTokenizer st;
+		// 규영이 카드 받으면서, 규영이가 가져간 카드 트래킹하기
+		boolean[] usedCards = new boolean[ALL_CARDS];
+		int[] p1Cards = new int[PER_PLAYER_CARDS];
+		st = new StringTokenizer(br.readLine());
+		int counter = 0;
+		while(st.hasMoreTokens())
+			usedCards[p1Cards[counter++]=Integer.parseInt(st.nextToken())-1]=true;
+		// 남은 카드 인영이 주기 (오름차순 보장)
+		int[] p2Cards = new int[PER_PLAYER_CARDS];
+		for(int i=0, j=0; i<ALL_CARDS; ++i)
+			if(!usedCards[i])
+				p2Cards[j++]=i;
+		// 이긴 플레이어 점수 카운팅
+		int[] winCaseCount = new int[2];
+		do {
+			++winCaseCount[getWinPlayerID(p1Cards, p2Cards)];
+		} while(tryGetNextPerm(p2Cards));
+		// 점수 출력
+		return new StringBuilder()
+					.append(winCaseCount[P1_ID])
+					.append(' ')
+					.append(winCaseCount[P2_ID])
+					.toString();
+	}
+
+	static boolean tryGetNextPerm(int[] cards) {
+		int seed = -1;
+		for(int i=cards.length-1; i>0; --i) {
+			if(cards[i-1] < cards[i]) {
+				seed = i-1;
+				break;
+			}
+		}
+		if (seed==-1) return false;
+		int toSwap = -1;
+		for(int i=cards.length-1; i>seed; --i) {
+			if(cards[seed] < cards[i]) {
+				toSwap = i;
+				break;
+			}
+		}
+		if (toSwap==-1) return false;
+		swap(cards, seed, toSwap);
+		swapReverse(cards, seed+1, cards.length);
+		return true;
+	}
+
+	static int getWinPlayerID(int[] p1Cards, int[] p2Cards) {
+		int p1Score = 0;
+		int p2Score = 0;
+		for(int i=0; i<PER_PLAYER_CARDS; ++i) {
+			int gameScore = p1Cards[i] + p2Cards[i] + 2;
+			if(p1Cards[i]+1 > p2Cards[i]+1)
+				p1Score += gameScore;
+			else
+				p2Score += gameScore;
+		}
+		// [-1,1] -> [0,2] -> [0,1]
+		return (-Integer.compare(p1Score, p2Score)+1)/2;
+	}
+
+	static void swapReverse(int[] arr, int startInclusive, int endExclusive) {
+		int len = endExclusive - startInclusive;
+		for(int i=0; i<len/2; ++i)
+			swap(arr, startInclusive+i, endExclusive-i-1);
+	}
+	
+	static void swap(int[] arr, int a, int b) {
+		int temp = arr[a];
+		arr[a] = arr[b];
+		arr[b] = temp;
+	}
 }
