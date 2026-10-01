@@ -3,181 +3,235 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.StringTokenizer;
 
-class Solution {
-	static final String TANKS = "<^>v";
-	static final String WALLS = "*#";
-	
+/**
+ * 입력:
+ * 그리드 H, W (2 ≤ H, W ≤ 20)
+ * 명령 N (0 < N ≤ 100)
+ * 
+ * 그리드의 한 셀 및 그리드의 한 글자는 반드시 하나의 캐릭터
+ * 
+ * 이전 구현에서
+ * 전차와 그리드를 분리하고, 객체로 묶고,
+ * 타일 타입을 순차적으로 판단하도록 만든 조치가
+ * 오히려 코드를 복잡하게 만들었음
+ * 
+ * 대포 쏘는건 그때그때 루프로 처리하고
+ * 탱크가 이동할 수 있는지도 그때그때 처리하도록 구현
+ * 탱크 위치 좌표만 기억하고, 탱크를 떼어내지도 않음
+ * 
+ * up right down left
+ * 0  1     2    3
+ * 으로 구현했으므로
+ * 오른쪽으로 돌고 싶으면 (dir+1)%4
+ * 왼쪽으로 돌고 싶으면 (dir+3)%4 하면 됨
+ */
+public class Solution {
+	static final int R = 0;
+	static final int C = 1;
+
 	static final char GROUND = '.';
-	static final char RIVER = '-';
-	
-	static final char SHOOT = 'S';
-	
-	static final char MOVE_LEFT = 'L';
-	static final char MOVE_UP = 'U';
-	static final char MOVE_RIGHT = 'R';
-	static final char MOVE_DOWN = 'D';
-	
-	static final int MOVE_LEFT_I = 0;
-	static final int MOVE_UP_I = 1;
-	static final int MOVE_RIGHT_I = 2;
-	static final int MOVE_DOWN_I = 3;
-	
-	static final int[][] DELTAS = {
-		    {-1,  0}, // <
-		    { 0, -1}, // ^
-		    { 1,  0}, // >
-		    { 0,  1}  // v
-		};
-	static final char[][] D2T = {
-			{' ', '^', ' '},
-			{'<', ' ', '>'},
-			{' ', 'v', ' '},
-		};
-	static char getD2T(int[] deltas) {
-		int x= deltas[0];
-		int y= deltas[1];
-		return D2T[y+1][x+1];
-	}
-	static final int[] RETURN_BUFFER = {0,0};
-	
-	String printMap(char[][] map, int H, int W) {
+	static final char WOOD_WALL = '*';
+	static final char METAL_WALL = '#';
+
+	public static void main(String...args) throws IOException {
+		BufferedReader br = new BufferedReader(
+			new InputStreamReader(System.in)
+		);
+		StringTokenizer st = new StringTokenizer(br.readLine());
+		int T = Integer.parseInt(st.nextToken());
 		StringBuilder sb = new StringBuilder();
-		for (int y=0; y<H; ++y) {
-			for (int x=0; x<W; ++x)
-				sb.append(map[y][x]);
-			if (y<H-1) sb.append('\n');
+		for(int tc=1; tc<=T; ++tc) {
+			sb
+				.append('#')
+				.append(tc)
+				.append(' ')
+				.append(solve(br))
+				.append('\n');
+		}
+		System.out.print(sb.toString());
+	}
+
+	static String solve(BufferedReader br) throws IOException {
+		StringTokenizer st = new StringTokenizer(br.readLine());
+		// 그리드 받으면서 탱크 현재 상태까지 특정
+		int H, W;
+		H = Integer.parseInt(st.nextToken());
+		W = Integer.parseInt(st.nextToken());
+		char[][] grid = new char[H][W];
+		Tank tank = new Tank();
+		tank.r = -1; tank.c = -1; tank.facing = null;
+		for(int r=H-1; r>=0; --r) {
+			grid[r] = br.readLine().toCharArray();
+			for(int c=0; c<W; ++c) {
+				// 탱크 위치/방향 특정용
+				switch(grid[r][c]) {
+					case '<':
+						tank.r = r; tank.c = c;
+						tank.facing = Facing.LEFT;
+						break;
+					case 'v':
+						tank.r = r; tank.c = c;
+						tank.facing = Facing.DOWN;
+						break;
+					case '>':
+						tank.r = r; tank.c = c;
+						tank.facing = Facing.RIGHT;
+						break;
+					case '^':
+						tank.r = r; tank.c = c;
+						tank.facing = Facing.UP;
+						break;
+				}
+			}
+		}
+		// 명령 수신
+		// 명령 갯수 버리기
+		br.readLine();
+		char[] commands = br.readLine().toCharArray();
+		// 명령대로 이동
+		for(char command : commands) {
+			switch(command) {
+				case 'U':
+				case 'D':
+				case 'L':
+				case 'R':
+					tryMove(grid, tank, command);
+					break;
+				case 'S':
+					shoot(grid, tank);
+					break;
+				default:
+					System.out.println("You should not be seeing this");
+					break;
+			}
+		}
+		return printGrid(grid, H, W);
+	}
+
+	static String printGrid(char[][] grid, int H, int W) {
+		StringBuilder sb = new StringBuilder();
+		for(int r=H-1; r>=0; --r) {
+			if(r<H-1) sb.append('\n');
+			for(int c=0; c<W; ++c) {
+				sb.append(grid[r][c]);
+			}
 		}
 		return sb.toString();
 	}
-	
-	boolean tryGetPlayer(char[][] map, int[][] player, int x, int y) {
-		char pc = map[y][x];
-		int idx = TANKS.indexOf(pc);
-		if (idx==-1) return false;
-		int[] dt = DELTAS[idx];
-		player[0] = new int[] {x, y};
-		player[1] = new int[] {dt[0], dt[1]};
-		removePlayerFromMap(map, player);
-		return true;
-	}
-	
-	void removePlayerFromMap(char[][] map, int[][] player) {
-		map[player[0][1]][player[0][0]] = GROUND;
-	}
-	
-	void placePlayerOnMap(char[][] map, int[][] player) {
-		map[player[0][1]][player[0][0]] = getD2T(player[1]);
-	}
-	
-	int[] peekNext(int[][] player) {
-		RETURN_BUFFER[0] = player[0][0] + player[1][0];
-		RETURN_BUFFER[1] = player[0][1] + player[1][1];
-		return RETURN_BUFFER;
-	}
-	
-	void faceTowards(int[][] player, int[] dt) {
-		player[1][0] = dt[0];
-		player[1][1] = dt[1];
-	}
-	
-	void moveNext(int[][] player) {
-		player[0][0] += player[1][0];
-		player[0][1] += player[1][1];
-	}
-	
-	boolean isOffboard(int H, int W, int x, int y) {
-		return y >= H || y < 0 || x >= W || x < 0;
-	}
-	
-	boolean isRiver(char[][] map, int x, int y) {
-		return map[y][x] == RIVER;
-	}
-	
-	int tryBreak(char[][] map, int x, int y) {
-		char pBreakable = map[y][x];
-		switch(WALLS.indexOf(pBreakable)) {
-		default:
-			return -1;
-		case 0:
-			map[y][x] = GROUND;
-			return 0;
-		case 1:
-			return 1;
+
+	static void tryMove(
+		char[][] grid, 
+		Tank tank, 
+		char command
+	) {
+		// 명령 -> 실제 방향 변환
+		// 탱크의 바라보는 방향은 반드시 업데이트되므로 즉시 업데이트
+		tank.facing = Facing.toFacing(command);
+		// 현재 탱크 위치에서 해당 방향으로 이동 시도
+		int[] delta = tank.facing.toDT();
+		int nextR = tank.r + delta[R];
+		int nextC = tank.c + delta[C];
+		if(isOffgrid(grid, nextR, nextC)) {
+			// 그리드 밖을 향하는 요청이라면
+			// 제자리에서 회전만 하고 종료
+			grid[tank.r][tank.c] = tank.facing.toTank();
+			return;
 		}
-	}
-	
-	void tryMove(char[][] map, int[][] player, int H, int W, int move_idx) {
-		faceTowards(player, DELTAS[move_idx]);
-		int[] peek = peekNext(player);
-		int px = peek[0];
-		int py = peek[1];
-		if(isOffboard(H, W, px, py)) return;
-		if(isRiver(map, px, py)) return;
-		if (map[py][px] == GROUND)
-			moveNext(player);
-	}
-	
-	void dfs(char[][] map, int[][] player, int[] buffer, int H, int W, char command) {
-		switch(command) {
-		case SHOOT:
-			int x = buffer[0], y = buffer[1];
-			if(isOffboard(H, W, x, y)) return;
-			int res = tryBreak(map, x, y);
-			if(res>=0) return;
-			buffer[0] += player[1][0];
-			buffer[1] += player[1][1];
-			dfs(map, player, buffer, H, W, command);
-			break;
-		case MOVE_UP:
-			tryMove(map, player, H, W, MOVE_UP_I);
-			break;
-		case MOVE_DOWN:
-			tryMove(map, player, H, W, MOVE_DOWN_I);
-			break;
-		case MOVE_LEFT:
-			tryMove(map, player, H, W, MOVE_LEFT_I);
-			break;
-		case MOVE_RIGHT:
-			tryMove(map, player, H, W, MOVE_RIGHT_I);
-			break;
+		if(grid[nextR][nextC] != GROUND) {
+			// 그리드 안쪽 요청이지만, 이동 불가한 타일로 향하는 요청이므로
+			// 제자리에서 회전만 하고 종료
+			grid[tank.r][tank.c] = tank.facing.toTank();
+			return;
 		}
-	}
-	
-	String solveInner(BufferedReader br) throws IOException {
-		StringTokenizer st = new StringTokenizer(br.readLine());
-		int H = Integer.parseInt(st.nextToken()), W = Integer.parseInt(st.nextToken());
-		char[][] map = new char[H][W];
-		int[][] player = new int[2][2]; // 0 pos 1 dir 0 x 1 y
-		for (int y=0; y<H; ++y) {
-			map[y] = new StringTokenizer(br.readLine())
-							.nextToken().toCharArray();
-			for (int x=0; x<W; ++x)
-				if (tryGetPlayer(map, player, x, y))
-					break;
-		}
-		int C = Integer.parseInt(new StringTokenizer(br.readLine()).nextToken());
-		char[] commands = new StringTokenizer(br.readLine()).nextToken().toCharArray();
-		for (char command : commands) {
-			dfs(map, player, peekNext(player), H, W, command);
-		}
-		placePlayerOnMap(map, player);
-		return printMap(map, H, W);
+		// 이동이 되었다는 말
+		// 이전 위치는 빈칸으로 바꾸고
+		grid[tank.r][tank.c] = GROUND;
+		// 새 위치는 지정된 방향을 바라보는 탱크로
+		grid[nextR][nextC] = tank.facing.toTank();
+		tank.r = nextR;
+		tank.c = nextC;
 	}
 
-	void solve() throws IOException {
-		BufferedReader br = new BufferedReader(
-				new InputStreamReader(System.in));
-		int T;
-		T = Integer.parseInt(br.readLine().trim());
-		StringBuilder sb = new StringBuilder();
-		for (int test_case = 1; test_case <= T; test_case++)
-			sb.append('#').append(test_case)
-					.append(' ').append(solveInner(br))
-					.append('\n');
-		System.out.print(sb);
+	static void shoot(char[][] grid, Tank tank) {
+		boolean hit = false;
+		int[] dt = tank.facing.toDT();
+		int toLookR = tank.r;
+		int toLookC = tank.c;
+		while(!hit) {
+			// 코드 일관성을 위해 일단 다음 칸을 보고 시작
+			toLookR += dt[R];
+			toLookC += dt[C];
+			// 그리드 밖이면 종료
+			if(isOffgrid(grid, toLookR, toLookC)) break;
+			// 현재 칸이 피격판정이 있는 칸인가
+			boolean hittable = false;
+			switch(grid[toLookR][toLookC]) {
+				case WOOD_WALL:
+				case METAL_WALL:
+					hittable = true;
+			}
+			// 피격판정이 없는 칸이면 다음으로
+			if(!hittable) continue;
+			// 피격판정이 있는 칸이면 때림
+			tryBreak(grid, toLookR, toLookC);
+			// 때렸으므로 상태 갱신
+			hit = true;
+		}
 	}
 
-	public static void main(String args[]) throws Exception {
-		new Solution().solve();
+	static boolean isOffgrid(char[][] grid, int r, int c) {
+		int H = grid.length;
+		int W = grid[0].length;
+		if (r < 0 || r >= H) return true;
+		if (c < 0 || c >= W) return true;
+		return false;
+	}
+
+	static void tryBreak(char[][] grid, int r, int c) {
+		switch(grid[r][c]) {
+			case WOOD_WALL:
+				grid[r][c] = GROUND;
+		}
+	}
+
+	static class Tank {
+		int r, c;
+		Facing facing;
+	}
+
+	static enum Facing {
+		UP(0), RIGHT(1), DOWN(2), LEFT(3);
+
+		private final int value;
+		final int[][] DT = {
+			{1, 0},
+			{0, 1}, 
+			{-1, 0}, 
+			{0, -1}, 
+		};
+		final char[] tanks = { '^', '>', 'v', '<' };
+
+		Facing(int value) { this.value = value; }
+
+		public static Facing toFacing(char command) throws IllegalArgumentException {
+			switch(command) {
+				default:
+					throw new IllegalArgumentException();
+				case 'U':
+					return Facing.UP;
+				case 'D':
+					return Facing.DOWN;
+				case 'L':
+					return Facing.LEFT;
+				case 'R':
+					return Facing.RIGHT;
+			}
+		}
+
+		public int[] toDT() {
+			return DT[value];
+		}
+
+		public char toTank() { return tanks[value]; }
 	}
 }
