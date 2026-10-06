@@ -1,14 +1,10 @@
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.Arrays;
 import java.util.StringTokenizer;
 
 public class Solution {
-	static final int FROM = 0;
-	static final int TO = 1;
-	static final int WEIGHT = 2;
-
+	static boolean isDirty = false;
 	public static void main(String...args) throws IOException {
 		BufferedReader br = new BufferedReader(
 			new InputStreamReader(System.in)
@@ -23,6 +19,7 @@ public class Solution {
 				.append(' ')
 				.append(solve(br))
 				.append('\n');
+			isDirty = true;
 		}
 		System.out.print(sb.toString());
 	}
@@ -30,72 +27,60 @@ public class Solution {
 	static String solve(BufferedReader br) throws IOException {
 		StringTokenizer st = new StringTokenizer(br.readLine());
 		int N = Integer.parseInt(st.nextToken());
-		long[] X = new long[N];
+		int[] X = new int[N];
 		st = new StringTokenizer(br.readLine());
 		for(int i=0; i<N; ++i)
 			X[i] = Integer.parseInt(st.nextToken());
-		long[] Y = new long[N];
+		int[] Y = new int[N];
 		st = new StringTokenizer(br.readLine());
 		for(int i=0; i<N; ++i)
 			Y[i] = Integer.parseInt(st.nextToken());
 		st = new StringTokenizer(br.readLine());
 		double E = Double.parseDouble(st.nextToken());
-		long[][] matrix = new long[N][N];
-		long[][] edges = new long[N*N][3];
-		int tails = 0;
-		for(int r=0; r<N; ++r) {
-			for(int c=r; c<N; ++c) {
-				if(r==c) {
-					matrix[r][c] = 0;
+		boolean[] treeCovers = new boolean[N];
+		long[] minDistances = new long[N];
+		for(int i=0; i<N; ++i)
+			minDistances[i] = Long.MAX_VALUE;
+		int current = 0;
+		treeCovers[0] = true;
+		minDistances[0] = 0;
+		while(!allcover(treeCovers)) {
+			int nextMinimumIdx = -1;
+			for(int i=0; i<N; ++i) {
+				if (treeCovers[i])
 					continue;
-				}
-				matrix[r][c] = matrix[c][r] = SQL2(X, Y, r, c);
-				edges[tails++] = new long[] {r, c, matrix[r][c]};
+				long lastMin = minDistances[i];
+				long newDist = SQL2(X, Y, current, i);
+				if(lastMin > newDist)
+					minDistances[i] = newDist;
+				if (nextMinimumIdx == -1 || minDistances[nextMinimumIdx] > minDistances[i])
+					nextMinimumIdx = i;
+			}
+			if (nextMinimumIdx != -1) {
+				current = nextMinimumIdx;
+				treeCovers[nextMinimumIdx] = true;
 			}
 		}
-		long[][] old = edges;
-		edges = new long[tails][3];
-		System.arraycopy(old, 0, edges, 0, tails);
-		Arrays.sort(
-			edges, 
-			(lhs, rhs) -> Long.compare(lhs[WEIGHT], rhs[WEIGHT])
-		);
-		int[] parents = new int[N];
-		for(int i=0; i<N; ++i) parents[i] = i;
-		int i = 0;
-		long weightSum = 0L;
-		int selected = 0;
-		while(selected < N-1) {
-			long[] currentEdge = edges[i++];
-			int from = (int)currentEdge[FROM];
-			int to = (int)currentEdge[TO];
-			if(!tryUnion(parents, from, to))
-				continue;
-			weightSum += currentEdge[WEIGHT];
-			++selected;
-		}
-		return String.format("%d", Math.round(E*weightSum));
+		return String.format("%d", Math.round(E*sum(minDistances)));
 	}
 
-	static long SQL2(long[] X, long[] Y, int r, int c) {
-		long xDiff = X[c] - X[r];
-		long yDiff = Y[c] - Y[r];
-		return xDiff*xDiff + yDiff*yDiff;
-	}
-
-	static boolean tryUnion(int[] parents, int toBeParent, int toBeChild) {
-		int rootA = find(parents, toBeParent);
-		int rootB = find(parents, toBeChild);
-		if(rootA == rootB)
-			return false;
-		parents[rootB] = rootA;
+	static boolean allcover(boolean[] arr) {
+		for(int i=0; i<arr.length; ++i)
+			if(!arr[i])
+				return false;
 		return true;
 	}
-	static int find(int[] parents, int toFindAncestry) {
-		int current = toFindAncestry;
-		int parent = parents[current];
-		if(parent == current)
-			return current;
-		return parents[current] = find(parents, parent);
+
+	static long SQL2(int[] X, int[] Y, int r, int c) {
+		long dx = X[c] - X[r];
+		long dy = Y[c] - Y[r];
+		return (dx*dx) + (dy*dy);
+	}
+
+	static long sum(long[] distances) {
+		long sum = 0;
+		for(int i=0; i<distances.length; ++i)
+			sum += distances[i];
+		return sum;
 	}
 }
