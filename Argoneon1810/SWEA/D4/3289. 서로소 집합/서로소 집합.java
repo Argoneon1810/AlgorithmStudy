@@ -1,8 +1,6 @@
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.ArrayDeque;
-import java.util.Queue;
 import java.util.StringTokenizer;
 
 public class Solution {
@@ -68,20 +66,19 @@ public class Solution {
 	static int find(int arr[], int a) {
 		int pa = arr[a];
 		if(pa==a) return pa;
-		Queue<Integer> q = new ArrayDeque<>();
-		q.offer(a);
 		while(true) {
-			a = pa;
-			pa = arr[a];
-			if(pa==a) break;
-			q.offer(a);
+			int c = pa;
+			pa = arr[c];
+			if(pa==c) break;
 		}
-		while(!q.isEmpty()) {
-			int b = q.poll();
-			arr[b] = pa;
+		while(true) {
+			int n = arr[a];
+			if (n==pa) break;
+			arr[a] = pa;
+			a = n;
 		}
 		return pa;
-	}
+    }
 
 	static boolean isJoint(int arr[], int a, int b) {
 		int pa = find(arr, a);
